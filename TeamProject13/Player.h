@@ -1,82 +1,99 @@
-// Player.h
+ï»¿// Player.h
 
 #pragma once
+
 #include <string>
-#include <iostream>
+#include <vector>
+#include "Item.h"
 
 class Player {
 private:
+    int level;
+    int exp;
+    int maxExp;
+    std::string name;
 
-	int Level = 1;
-	int exp = 0;
-	int maxExp = 100;
-	std::string name;
-	int mental, maxMental;   // HP
-	int focus, maxFocus;     // MP
-	int atk;                 // °ø°Ý·Â
-	int def;                 // ¹æ¾î·Â
-	int progress = 0;        // ÁøÇàµµ (0~100%)
-	int life = 3;            // ¸ñ¼û
-	int gold = 0;            // °ñµå
+    int mental;
+    int maxMental;
+    int focus;
+    int maxFocus;
+    int atk;
+    int def;
+
+    int progress;
+    int life;
+    int gold;
+
+    int tempAtkBonus;
+    int tempDefBonus;
+    std::vector<Item> inventory;
+
+
 
 public:
+    Player();
+    Player(const std::string& name, int mental, int focus, int atk, int def);
 
-	// get ÇÔ¼ö
-	int GetLevel() const { return Level; }
-	int GetExp() const { return exp; }
-	int GetMental() const { return mental; }
-	int GetMaxMental() const { return maxMental; }
-	int GetFocus() const { return focus; }
-	int GetMaxFocus() const { return maxFocus; }
-	int GetProgress() const { return progress; }
-	int GetLife() const { return life; }
-	int GetAtk() const { return atk; }
-	int GetDef() const { return def; }
-	int GetGold() const { return gold; }
+    //Get
+    const std::string& GetName() const { return name; }
+    int GetLevel() const { return level; }
+    int GetExp() const { return exp; }
+    int GetMaxExp() const { return maxExp; }
+    int GetMental() const { return mental; }
+    int GetMaxMental() const { return maxMental; }
+    int GetFocus() const { return focus; }
+    int GetMaxFocus() const { return maxFocus; }
+    int GetProgress() const { return progress; }
+    int GetLife() const { return life; }
+    int GetGold() const { return gold; }
+    int GetAtk() const { return atk + tempAtkBonus; }
+    int GetDef() const { return def + tempDefBonus; }
+    int GetBaseAtk() const { return atk; }
+    int GetBaseDef() const { return def; }
 
-	//set ÇÔ¼ö
-	//void SetExp(int exp) { this->exp = exp; }
-	//void SetMaxExp(int maxExp) { this->maxExp = maxExp; }
-	//void Setmental(int mental) { this->mental = mental; }
-	//void SetMaxMental(int maxMental) { this->maxMental = maxMental; }
-	//void SetFocus(int focus) { this->focus = focus; }
-	//void SetMaxFocus(int maxFocus) { this->maxFocus = maxFocus; }
-	//void SetLife(int life) { this->life = life; }
-	//void SetAtk(int atk) { this->atk = atk; }
-	//void SetDef(int def) { this->def = def; }
-	//void SetGold(int gold) { this->gold = gold; }
-	
+    //Add
+    void AddMental(int val);
+    void AddFocus(int val);
+    void AddProgress(int val);
+    void AddGold(int val);
+    void AddExp(int val);
+    void AddAtk(int val);
+    void AddDef(int val);
+    void AddLife(); //
 
 
-	//add ÇÔ¼ö
-	void AddExp(int val);
-	void AddMental(int val);
-	void AddFocus(int val);
-	void AddProgress(int val);
-	void AddAtk(int val) { atk += val; }
-	void AddDef(int val) { def += val; }
-	void Addgold(int val) {gold += val;}
-	void AddLevel() { Level += 1; }
+    //Set
+    void SubMental(int val);
+    void SubFocus(int val);
+    void SubLife();
+    void SubGold(int val);
+    void SubProgress(int val);
+    bool SpendGold(int val);
 
-	
-	//sub ÇÔ¼ö
-	void SubMental(int val);
-	void SubFocus(int val);
-	void SubLife();
-	void SubGold(int val);
-	void SubProgress(int val);
+    int getHP() const { return mental; }
+    void takeDamage(int damage) { SubMental(damage); }
+    bool IsDead() const { return life <= 0; }
+    bool HasCollapsed() const { return mental <= 0; }
 
-	//ÀüÅõ °ü·Ã
-	int getHP() const { return mental; } // Battlemanager ÀÛ¾÷¿ë
-	void takeDamage(int damage) { SubMental(damage); }
-	bool IsDead() const {return life <= 0; }
+    void RestoreFullMental();
+    void RestoreFullFocus();
+    void RestoreAll();
+    void RecoverAfterCollapse();
 
-	//ºÎÈ° °ü·Ã
-	void RestoreFullMental() {mental = maxMental;}
+    void AddTemporaryAtk(int val);
+    void AddTemporaryDef(int val);
+    void ClearTemporaryBattleBonuses();
 
-	// »ý¼ºÀÚ
-	Player(const std::string& name,int mental, int focus, int atk, int def);
+    // ìŠ¤í‚¬ ë³´ë„ˆìŠ¤ ëŠ¥ë ¥ì¹˜ ì´ˆê¸°í™” í•¨ìˆ˜
+    void AddTempDef(int val);
+    void ResetTempStats();
+    int GetTotalDef() const;
 
-	//½ºÅÈ º¸¿©ÁÖ±â
-	void ShowCurrentStatus();
+    void AddItem(const Item& item);
+    bool HasItems() const { return !inventory.empty(); }
+    const std::vector<Item>& GetInventory() const { return inventory; }
+    const Item* GetItem(std::size_t index) const;
+    bool RemoveItem(std::size_t index);
+    void PrintInventory() const;
+    void ShowCurrentStatus() const;
 };
