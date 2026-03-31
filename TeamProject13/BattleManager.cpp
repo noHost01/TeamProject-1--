@@ -9,11 +9,49 @@
 #include <iomanip>
 #include <cstdlib>
 #include <ctime>
+#include <limits>
+#include <windows.h>
+
+void SetColor(int color)
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+}
+
+void PrintBar(int current, int max, int fillColor, int emptyColor, int barWidth = 20)
+{
+	if (max <= 0) return;
+
+	float ratio = (float)current / max;
+	int filled = (int)(ratio * barWidth);
+
+	std::cout << "[";
+
+	for (int i = 0; i < barWidth; ++i)
+	{
+		if (i < filled)
+		{
+			SetColor(fillColor);
+			std::cout << "█";
+		}
+		else
+		{
+			SetColor(emptyColor);
+			std::cout << "█";
+		}
+	}
+
+	SetColor(7);
+	std::cout << "]";
+}
 
 // [수정/추가사항] LNK2019 (unresolved external symbol) 링킹 에러 해결을 위해 생성자 구현부 추가
 BattleManager::BattleManager()
 	: skillManager(nullptr), isRunningAway(false)
 {
+	skills.push_back(SkillManager("야근싫어", SkillType::ATTACK, 20, 10, 2));
+	skills.push_back(SkillManager("복붙", SkillType::ATTACK, 15, 8, 1));
+	skills.push_back(SkillManager("방어스킬", SkillType::DEFENSE, 10, 5, 2));
+	skills.push_back(SkillManager("회복스킬", SkillType::HEAL, 25, 12, 3));
 }
 
 bool BattleManager::StartBattle(Player& player, Monster& monster)
@@ -22,13 +60,24 @@ bool BattleManager::StartBattle(Player& player, Monster& monster)
 
 	while (!IsBattleOver(player, monster))
 	{
+		system("cls");
+
 		DisplayStatus(player, monster);
 		DisplayMenu();
 
 		PlayerTurn(player, monster);
 		if (IsBattleOver(player, monster)) break;
 
+		std::cout << "\n계속하려면 Enter를 누르세요...";
+		std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
+		std::cin.get();
+
+		system("cls");
 		MonsterTurn(player, monster);
+
+		std::cout << "\n계속하려면 Enter를 누르세요...";
+		std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
+		std::cin.get();
 
 		if (player.GetMental() <= 0)
 		{
@@ -78,17 +127,38 @@ bool BattleManager::StartBattle(Player& player, Monster& monster)
 
 void BattleManager::DisplayStatus(const Player& player, const Monster& monster)
 {
-	std::cout << "===============================\n";
-	std::cout << "[플레이어]\n";
+	std::cout << "\n=================[ 빌 런 ]=================\n\n";
+
+	std::cout << monster.GetName() << "이 등장했습니다.\n";
+	std::cout << std::left << std::setw(10) << "압박감"
+		<< " : " << std::right << std::setw(3) << monster.GetPressure() << " / "
+		<< std::setw(3) << monster.GetMaxPressure() << "  ";
+
+	PrintBar(monster.GetPressure(), monster.GetMaxPressure(), 10, 12);
+
+	std::cout << '\n';
+
+	std::cout << "\n===========================================\n";
+
+
+	std::cout << "\n================[ 플레이어 ]================\n\n";
+
+	std::cout << player.GetName() << '\n';  // 플레이어 이름 추가
 	// [수정/추가사항] 한글 인코딩 에러(C2001: newline in constant) 방지를 위해 문자열 형태 및 여백 수정 ("/" -> " / ")
 
 	std::cout << std::left << std::setw(10) << "멘탈"
 		<< " : " << std::right << std::setw(3) << player.GetMental() << " / "
-		<< std::setw(3) << player.GetMaxMental() << '\n';
+		<< std::setw(3) << player.GetMaxMental() << "  ";
 
-	std::cout << std::left << std::setw(10) << "집중력"
+	PrintBar(player.GetMental(), player.GetMaxMental(), 10, 12);
+	std::cout << '\n';
+
+	std::cout << std::left << std::setw(11) << "집중력"
 		<< " : " << std::right << std::setw(3) << player.GetFocus() << " / "
-		<< std::setw(3) << player.GetMaxFocus() << '\n';
+		<< std::setw(3) << player.GetMaxFocus() << "  ";
+
+	PrintBar(player.GetFocus(), player.GetMaxFocus(), 9, 14);
+	std::cout << '\n';
 
 	int life = player.GetLife();
 
@@ -99,12 +169,7 @@ void BattleManager::DisplayStatus(const Player& player, const Monster& monster)
 	}
 	std::cout << '\n';
 
-	std::cout << "[빌런]\n";
-	std::cout << std::left << std::setw(10) << "압박감"
-		<< " : " << std::right << std::setw(3) << monster.GetPressure() << " / "
-		<< std::setw(3) << monster.GetMaxPressure() << '\n';
-
-	std::cout << "===============================\n";
+	std::cout << "\n===========================================\n";
 }
 
 void BattleManager::DisplayMenu()
@@ -142,9 +207,21 @@ void BattleManager::PlayerTurn(Player& player, Monster& monster)
 	}
 
 	case 2:
-		if (skillManager)
-			skillManager->Use(player, monster);
-		break;
+		system("cls");
+		DisplayStatus(player, monster);
+		DisplaySkillMenu(player);
+
+		if (UseSkill(player, monster))
+		{
+			return;
+		}
+		else
+		{
+			system("cls");
+			DisplayStatus(player, monster);
+			DisplayMenu();
+			break;
+		}
 
 	case 3:
 		if (UseItem(player))
@@ -175,6 +252,55 @@ void BattleManager::PlayerTurn(Player& player, Monster& monster)
 		std::cout << "선택 방식이 잘못되었습니다.. 다시 입력해주세요.\n";
 		DisplayMenu();
 		break;
+	}
+}
+
+void BattleManager::DisplaySkillMenu(const Player& player) const
+{
+	std::cout << "\n================[ 스 킬 창 ]================\n\n";
+	std::cout << "1. 야근 싫어\n";
+	std::cout << "2. 복붙\n";
+	std::cout << "3. 방어스킬\n";
+	std::cout << "4. 회복스킬\n";
+	std::cout << "0. 뒤로가기\n";
+	std::cout << "\n============================================\n";
+	std::cout << "사용할 스킬을 선택하세요 : ";
+}
+
+bool BattleManager::UseSkill(Player& player, Monster& monster)
+{
+	int choice;
+	
+	while (true)
+	{
+		std::cin >> choice;
+
+		switch (choice)
+		{
+			case 1:
+				skills[0].Use(player, monster);
+				return true;
+
+			case 2:
+				skills[1].Use(player, monster);
+				return true;
+
+			case 3:
+				skills[2].Use(player, monster);
+				return true;
+
+			case 4:
+				skills[3].Use(player, monster);
+				return true;
+
+			case 0:
+				std::cout << "스킬 사용이 취소되었습니다.\n";
+				return false;
+
+			default:
+				std::cout << "잘못된 입력입니다. 스킬을 다시 선택해주세요. : ";
+				break;
+		}
 	}
 }
 
@@ -234,7 +360,10 @@ void BattleManager::MonsterTurn(Player& player, Monster& monster)
 	player.takeDamage(damage);
 
 	std::cout << player.GetName() << "이(가) " << damage << "만큼 멘탈이 피해를 받았습니다!!\n";
-	std::cout << "현재 멘탈 : " << player.GetMental() << " / " << player.GetMaxMental() << "\n";
+	std::cout << "현재 멘탈 : " << player.GetMental() << " / " << player.GetMaxMental() << "  ";
+
+	PrintBar(player.GetMental(), player.GetMaxMental(), 10, 12);
+	std::cout << '\n';
 
 	// [수정/추가사항] 몬스터 턴 종료 시 플레이어 스킬의 쿨타임(CoolTime)을 감소시키는 로직 추가
 	for (SkillManager& skill : skills) {
@@ -284,6 +413,8 @@ void BattleManager::ProcessVictory(Player& player, Monster& monster)
 	player.AddExp(expReward);
 	player.AddGold(goldReward);
 
+	system("cls");
+
 	std::cout << "============================\n";
 	std::cout << "[ 전투 승리! ]\n";
 	std::cout << "============================\n";
@@ -330,6 +461,12 @@ void BattleManager::ProcessVictory(Player& player, Monster& monster)
 	}
 
 	std::cout << "============================\n";
+
+	std::cout << "\n Enter를 누르세요....";
+	std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
+	std::cin.get();
+
+	system("cls");
 
 	// [수정/추가사항] 주석 처리되어 있던 플레이어 보상 적용 함수 호출 활성화
 	player.AddExp(expReward);

@@ -9,6 +9,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#include <conio.h>
 
 WorldManager::WorldManager()
     : dangerLevel(0), isFinalBossAppeared(false), bonusLvl3(false), bonusLvl6(false), bonusLvl9(false) {
@@ -16,7 +17,6 @@ WorldManager::WorldManager()
 
 void WorldManager::ShowActionMenu(const Player& p) const
 {
-    system("cls");
     ConsoleWidget::CaptureAndDrawBox([&]() {
         std::cout << "\n======================[ 업무 중 ]======================" << std::endl;
         std::cout << "[사무실] 진행도 " << p.GetProgress()
@@ -26,7 +26,7 @@ void WorldManager::ShowActionMenu(const Player& p) const
         std::cout << "멘탈 " << p.GetMental() << "/" << p.GetMaxMental()
             << " | 집중력 " << p.GetFocus() << "/" << p.GetMaxFocus();
         std::cout << " | LV" << p.GetLevel() << " 경험치 " << p.GetExp() << "/" << p.GetMaxExp() << std::endl;
-
+       
         Utils::PrintLine('-', 55);
         std::cout << " 1. 업무 집중    (진행도+, 멘탈-, 집중력-, 위험도+)\n";
         std::cout << " 2. 커피 충전    (집중력+, 멘탈 소폭-)\n";
@@ -39,19 +39,46 @@ void WorldManager::ShowActionMenu(const Player& p) const
         });
 }
 
+void WorldManager::ShowGameObjective() const
+{
+    ConsoleWidget::CaptureAndDrawBox([&]() {
+        std::cout << "======================== [ 게임 목표 ] ========================\n";
+        std::cout << "\n";
+        std::cout << " 1. 최종 목표 : 무사히 업무를 마치고 '정시 퇴근' 하십시오!\n";
+        std::cout << "\n";
+        std::cout << " 2. 상태 관리 : 업무를 하면 [멘탈]과 [집중력]이 깎입니다.\n";
+        std::cout << "                스트레스로 멘탈이 바닥나면 과로사(게임오버)!\n";
+        std::cout << "\n";
+        std::cout << " 3. 돌발 전투 : 업무 중이거나 농땡이를 피울 때, 예고 없이\n";
+        std::cout << "                회사 내 빌런이 등장해 전투가 벌어집니다.\n";
+        std::cout << "\n";
+        std::cout << " 4. 최종 보스 : 진행도가 100%가 되면 [최종보스 팀장님]이 나타납니다!\n";
+        std::cout << "\n";
+        std::cout << " 5. 게임 승리 : 퇴근 직전 [팀장님]의 최종 결재를 넘어\n";
+        std::cout << "                무사히 야근 지옥에서 살아남으세요!\n";
+        std::cout << "\n";
+        std::cout << "===============================================================\n";
+        });
+
+    std::cout << "\n   [ 숙지했습니다. (아무 키나 눌러 다음으로 이동) ]";
+    _getch();
+}
+
 void WorldManager::ShowStatus(const Player& p) const
 {
-    Utils::PrintLine('=', 50);
-    std::cout << "[상태창]\n";
-    std::cout << "이름: " << p.GetName() << " | 레벨: " << p.GetLevel()
-        << " | 경험치: " << p.GetExp() << "/" << p.GetMaxExp() << "\n";
-    std::cout << "멘탈: " << p.GetMental() << "/" << p.GetMaxMental()
-        << " | 집중력: " << p.GetFocus() << "/" << p.GetMaxFocus() << "\n";
-    std::cout << "공격력: " << p.GetAtk() << " | 방어력: " << p.GetDef()
-        << " | 라이프: " << p.GetLife() << "\n";
-    std::cout << "진행도: " << p.GetProgress() << "% | 골드: " << p.GetGold()
-        << "G | 위험도: " << dangerLevel << "\n";
-    Utils::PrintLine('=', 50);
+    ConsoleWidget::CaptureAndDrawBox([&]() {
+        Utils::PrintLine('=', 50);
+        std::cout << "[상태창]\n";
+        std::cout << "이름: " << p.GetName() << " | 레벨: " << p.GetLevel()
+            << " | 경험치: " << p.GetExp() << "/" << p.GetMaxExp() << "\n";
+        std::cout << "멘탈: " << p.GetMental() << "/" << p.GetMaxMental()
+            << " | 집중력: " << p.GetFocus() << "/" << p.GetMaxFocus() << "\n";
+        std::cout << "공격력: " << p.GetAtk() << " | 방어력: " << p.GetDef()
+            << " | 라이프: " << p.GetLife() << "\n";
+        std::cout << "진행도: " << p.GetProgress() << "% | 골드: " << p.GetGold()
+            << "G | 위험도: " << dangerLevel << "\n";
+        Utils::PrintLine('=', 50);
+        });
     p.PrintInventory();
 }
 
@@ -62,18 +89,22 @@ void WorldManager::FocusWork(Player& p)
     p.SubMental(5);
     p.SubFocus(10);
     dangerLevel = std::min(100, dangerLevel + 15);
-
-    std::cout << "\n[업무 집중] 열심히 일했습니다.\n";
-    std::cout << "진행도 +" << progressGain << " | 멘탈 -5 | 집중력 -10 | 위험도 +15\n";
+    ConsoleWidget::CaptureAndDrawBox([&]() {
+        system("cls");
+        std::cout << "\n[업무 집중] 열심히 일했습니다.\n";
+        std::cout << "진행도 +" << progressGain << " | 멘탈 -5 | 집중력 -10 | 위험도 +15\n";
+        });
 }
 
 void WorldManager::DrinkCoffee(Player& p)
 {
     p.AddFocus(20);
     p.SubMental(3);
-
-    std::cout << "\n[커피 충전] 아이스 아메리카노 쭈왑!\n";
-    std::cout << "집중력 +20 | 멘탈 -3\n";
+    ConsoleWidget::CaptureAndDrawBox([&]() {
+        system("cls");
+        std::cout << "\n[커피 충전] 아이스 아메리카노 쭈왑!\n";
+        std::cout << "집중력 +20 | 멘탈 -3\n";
+        });
 }
 
 void WorldManager::WatchYoutube(Player& p)
@@ -82,18 +113,22 @@ void WorldManager::WatchYoutube(Player& p)
     p.AddMental(10);
     p.SubFocus(15);
     dangerLevel = std::min(100, dangerLevel + 20);
-
-    std::cout << "\n[유튜브 시청] 잠깐만 보려다가...\n";
-    std::cout << "진행도 -5 | 멘탈 +10 | 집중력 -15 | 위험도 +20\n";
+    ConsoleWidget::CaptureAndDrawBox([&]() {
+        system("cls");
+        std::cout << "\n[유튜브 시청] 잠깐만 보려다가...\n";
+        std::cout << "진행도 -5 | 멘탈 +10 | 집중력 -15 | 위험도 +20\n";
+        });
 }
 
 void WorldManager::Stretching(Player& p)
 {
     p.AddMental(8);
     p.AddFocus(5);
-
-    std::cout << "\n[몰래 스트레칭] 슬쩍 기지개를 켭니다.\n";
-    std::cout << "멘탈 +8 | 집중력 +5\n";
+    ConsoleWidget::CaptureAndDrawBox([&]() {
+        system("cls");
+        std::cout << "\n[몰래 스트레칭] 슬쩍 기지개를 켭니다.\n";
+        std::cout << "멘탈 +8 | 집중력 +5\n";
+        });
 }
 
 bool WorldManager::CheckEncounter()
@@ -137,6 +172,7 @@ bool WorldManager::IsReadyForFinalBoss(int currentProgress)
     }
     return false;
 }
+
 
 void WorldManager::CheckLevelBonus(Player& p)
 {
