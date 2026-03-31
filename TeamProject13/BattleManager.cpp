@@ -12,6 +12,13 @@
 #include <limits>
 #include <windows.h>
 
+static void WaitForEnter()
+{
+	std::cout << "\n계속하려면 Enter를 누르세요...";
+	std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
+	std::cin.get();
+}
+
 void SetColor(int color)
 {
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
@@ -54,7 +61,7 @@ BattleManager::BattleManager()
 	skills.push_back(SkillManager("회복스킬", SkillType::HEAL, 25, 12, 3));
 }
 
-bool BattleManager::StartBattle(Player& player, Monster& monster)
+BattleResult BattleManager::StartBattle(Player& player, Monster& monster)
 {
 	isRunningAway = false;
 
@@ -68,16 +75,12 @@ bool BattleManager::StartBattle(Player& player, Monster& monster)
 		PlayerTurn(player, monster);
 		if (IsBattleOver(player, monster)) break;
 
-		std::cout << "\n계속하려면 Enter를 누르세요...";
-		std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
-		std::cin.get();
+		WaitForEnter();
 
 		system("cls");
 		MonsterTurn(player, monster);
 
-		std::cout << "\n계속하려면 Enter를 누르세요...";
-		std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
-		std::cin.get();
+		WaitForEnter();
 
 		if (player.GetMental() <= 0)
 		{
@@ -85,43 +88,35 @@ bool BattleManager::StartBattle(Player& player, Monster& monster)
 
 			if (player.GetLife() <= 0)
 			{
-				bool revived = false;
-				const std::vector<Item>& inventory = player.GetInventory();
-
-				for (std::size_t i = 0; i < inventory.size(); ++i)
+				if (player.TryAutoRevive())
 				{
-					if (inventory[i].GetLifeBonus() > 0)
-					{
-						std::cout << inventory[i].GetName() << "이(가) 자동으로 사용되었습니다.\n";
-						player.AddLife();
-						player.RemoveItem(i);
-						revived = true;
-						break;
-					}
+					player.ResetTempStats();
+					return BattleResult::Revived;
 				}
-
-				if (!revived)
-				{
-					break;
-				}
+				ProcessDefeat(player, monster);
+				return BattleResult::Defeat;
 			}
-			player.RecoverAfterCollapse();
+			ProcessCollapse(player, monster);
+			player.ResetTempStats();
+			return BattleResult::Collapse;
 		}
+		
 	}
 	player.ResetTempStats();
 
 	if (player.GetMental() <= 0) {
 		ProcessDefeat(player, monster);
-		return false;
+		return BattleResult::Defeat;
 	}
 	else {
 		if (!isRunningAway) {
 			ProcessVictory(player, monster);
+			return BattleResult::Victory;
 		}
 		else {
 			ProcessRunAway(player, monster);
+			return BattleResult::RunAway;
 		}
-		return true;
 	}
 }
 
@@ -241,6 +236,7 @@ void BattleManager::PlayerTurn(Player& player, Monster& monster)
 		{
 			std::cout << "(지금이다!!!!!)\n";
 			isRunningAway = true;
+			WaitForEnter();
 		}
 		else
 		{
@@ -279,10 +275,14 @@ bool BattleManager::UseSkill(Player& player, Monster& monster)
 		{
 			case 1:
 				skills[0].Use(player, monster);
+				if (monster.IsDefeated() || monster.GetPressure() <= 0)
+					WaitForEnter();
 				return true;
 
 			case 2:
 				skills[1].Use(player, monster);
+				if (monster.IsDefeated() || monster.GetPressure() <= 0)
+					WaitForEnter();
 				return true;
 
 			case 3:
@@ -353,11 +353,7 @@ void BattleManager::MonsterTurn(Player& player, Monster& monster)
 	std::cout << "\n[ 몬스터 턴 ]\n";
 	std::cout << monster.GetName() << "이(가) 잔소리를 시작합니다.\n";
 
-	int damage = monster.GetAtk() - player.GetDef();
-	if (damage < 0)
-		damage = 0;
-
-	player.takeDamage(damage);
+	int damage = monster.MonsterAction(player);
 
 	std::cout << player.GetName() << "이(가) " << damage << "만큼 멘탈이 피해를 받았습니다!!\n";
 	std::cout << "현재 멘탈 : " << player.GetMental() << " / " << player.GetMaxMental() << "  ";
@@ -385,7 +381,7 @@ bool BattleManager::IsBattleOver(const Player& player, const Monster& monster)
 	return false;
 }
 
-void BattleManager::ProcessDefeat(Player& player, Monster& monster)
+void BattleManager::ProcessCollapse(Player& player, Monster& monster)
 {
 	std::cout << "멘탈이 " << player.GetMental() << "이 되었습니다.\n";
 	std::cout << monster.GetName() << "에게 잔소리를 심하게 들었습니다.\n";
@@ -396,12 +392,21 @@ void BattleManager::ProcessDefeat(Player& player, Monster& monster)
 	std::cout << "그래... 사료 사야지...\n";
 	std::cout << "당신은 눈물을 닦고 다시 일을 시작합니다.\n";
 
-	player.SubLife();
-
 	std::cout << "뽀삐사진을 1개 잃었습니다.\n";
 
 	player.AddProgress(-10);
 	std::cout << "진행도가 10 감소했습니다.\n";
+
+	player.RecoverAfterCollapse();
+
+	WaitForEnter();
+}
+
+void BattleManager::ProcessDefeat(Player& player, Monster& monster)
+{
+	std::cout << player.GetName() << "의 멘탈이 완전히 무저졌습니다.\n";
+	std::cout << monster.GetName() << "의 압박을 버티지 못했습니다.\n";
+	std::cout << "더 이상 일을 이어갈 수 없습니다....\n";
 }
 
 void BattleManager::ProcessVictory(Player& player, Monster& monster)
@@ -462,15 +467,9 @@ void BattleManager::ProcessVictory(Player& player, Monster& monster)
 
 	std::cout << "============================\n";
 
-	std::cout << "\n Enter를 누르세요....";
-	std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
-	std::cin.get();
+	WaitForEnter();
 
 	system("cls");
-
-	// [수정/추가사항] 주석 처리되어 있던 플레이어 보상 적용 함수 호출 활성화
-	player.AddExp(expReward);
-	player.AddGold(goldReward);
 }
 
 void BattleManager::ProcessRunAway(Player& player, Monster& monster)
@@ -483,4 +482,6 @@ void BattleManager::ProcessRunAway(Player& player, Monster& monster)
 	std::cout << player.GetName() << "이(가) 숨을 고르며 다시 업무 자리로 돌아갑니다.\n";
 
 	std::cout << "============================\n";
+
+	WaitForEnter();
 }
